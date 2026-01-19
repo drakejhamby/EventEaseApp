@@ -1,0 +1,163 @@
+@page "/"
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@inject IEventService EventService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+@implements IDisposable
+
+<PageTitle>EventEase - Discover Amazing Events</PageTitle>
+
+<div class="hero-section">
+    <div class="hero-content">
+        <h1 class="hero-title">Welcome to EventEase</h1>
+        <p class="hero-subtitle">Discover amazing events in your area</p>
+    </div>
+</div>
+
+<div class="filters-section">
+    <div class="container">
+        <div class="filters-container">
+            <div class="search-container">
+                <input type="text" class="form-control search-input" placeholder="Search events..." @bind="searchQuery"
+                    @onkeyup="OnSearchChanged" />
+            </div>
+            <div class="filter-container">
+                <select class="form-select location-filter" @bind="selectedLocation" @bind:after="OnLocationChanged">
+                    <option value="">All Locations</option>
+                    @foreach (var location in uniqueLocations)
+                    {
+                        <option value="@location">@location</option>
+                    }
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="events-section">
+    <div class="container">
+        <div class="section-header">
+            <h2>Upcoming Events</h2>
+            <p class="text-muted">@filteredEvents.Count events found</p>
+        </div>
+
+        @if (filteredEvents.Any())
+        {
+            <div class="events-grid">
+                @foreach (var eventItem in filteredEvents)
+                {
+                    <EventCard Event="@eventItem" OnViewDetails="@ViewDetails" OnRegister="@RegisterEvent" />
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Event> events = new();
+    private List<Event> filteredEvents = new();
+    private List<string> uniqueLocations = new();
+    private string selectedLocation = "";
+    private string searchQuery = "";
+    private Timer? _searchTimer;
+    private string _lastSearchQuery = "";
+    private string _lastSelectedLocation = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var loadedEvents = await EventService.GetAllEventsAsync();
+            events = loadedEvents?.Where(e => e != null).ToList() ?? new List<Event>();
+
+            // Extract unique locations safely
+            uniqueLocations = events
+            .Where(e => !string.IsNullOrWhiteSpace(e.Location))
+            .Select(e => e.Location!)
+            .Distinct()
+            .OrderBy(location => location)
+            .ToList();
+
+            FilterEvents();
+        }
+        catch (Exception)
+        {
+            events = new List<Event>();
+            filteredEvents = new List<Event>();
+            uniqueLocations = new List<string>();
+        }
+    }
+
+    private void OnSearchChanged()
+    {
+        _searchTimer?.Dispose();
+        _searchTimer = new Timer(_ => InvokeAsync(() =>
+        {
+            if (searchQuery != _lastSearchQuery)
+            {
+                _lastSearchQuery = searchQuery;
+                FilterEvents();
+                StateHasChanged();
+            }
+        }), null, 300, Timeout.Infinite);
+    }
+
+    private void OnLocationChanged()
+    {
+        if (selectedLocation != _lastSelectedLocation)
+        {
+            _lastSelectedLocation = selectedLocation;
+            FilterEvents();
+        }
+    }
+
+    private void FilterEvents()
+    {
+        try
+        {
+            // Start with upcoming events only for better performance
+            var filtered = events.Where(e => e != null && e.IsUpcoming);
+
+            // Location filter (apply first as it's likely more selective)
+            if (!string.IsNullOrEmpty(selectedLocation))
+            {
+                filtered = filtered.Where(e =>
+                string.Equals(e.Location, selectedLocation, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Search filter with optimized string operations
+            var query = searchQuery?.Trim();
+            if (!string.IsNullOrEmpty(query))
+            {
+                var queryLower = query.ToLowerInvariant();
+                filtered = filtered.Where(e =>
+                (e.Name?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) == true) ||
+                (e.Description?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) == true) ||
+                (e.Location?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) == true) ||
+                (e.Tags?.Any(tag => tag?.Contains(queryLower, StringComparison.OrdinalIgnoreCase) == true) == true));
+            }
+
+            filteredEvents = filtered.OrderBy(e => e.Date).ToList();
+        }
+        catch (Exception)
+        {
+            filteredEvents = events.Where(e => e != null && e.IsUpcoming).OrderBy(e => e.Date).ToList();
+        }
+    }
+
+    public void Dispose()
+    {
+        _searchTimer?.Dispose();
+    }
+
+    private void ViewDetails(Event evt)
+    {
+        Navigation.NavigateTo($"/event-details/{evt.Id}");
+    }
+
+    private void RegisterEvent(Event evt)
+    {
+        Navigation.NavigateTo($"/event-registration/{evt.Id}");
+    }
+}

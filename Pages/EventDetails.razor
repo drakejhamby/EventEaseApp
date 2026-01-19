@@ -1,0 +1,171 @@
+@page "/event-details/{EventId:int}"
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@inject IEventService EventService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>@(currentEvent?.Name ?? "Event Details") - EventEase</PageTitle>
+
+@if (currentEvent != null)
+{
+    <div class="event-details-container">
+        <div class="back-navigation">
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Back to Events
+            </button>
+        </div>
+
+        <div class="event-details-header">
+            <div class="event-title-section">
+                <h1 class="event-title">@currentEvent.Name</h1>
+                <div class="event-meta">
+                    <span class="event-date">
+                        <i class="bi bi-calendar-event"></i>
+                        @currentEvent.Date.ToString("MMMM dd, yyyy 'at' h:mm tt")
+                    </span>
+                    <span class="event-location">
+                        <i class="bi bi-geo-alt"></i>
+                        @currentEvent.Location
+                    </span>
+                </div>
+            </div>
+
+            <div class="event-actions">
+                @if (currentEvent.Price > 0)
+                {
+                    <div class="price-info">
+                        <span class="price">$@currentEvent.Price.ToString("F2")</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="price-info">
+                        <span class="price free">Free Event</span>
+                    </div>
+                }
+
+                <button class="btn btn-success btn-lg register-btn" @onclick="RegisterForEvent"
+                    disabled="@currentEvent.IsFull">
+                    @if (currentEvent.IsFull)
+                    {
+                        <text>Event Full</text>
+                    }
+                    else
+                    {
+                        <text>Register Now</text>
+                    }
+                </button>
+            </div>
+        </div>
+
+        <div class="event-details-body">
+            <div class="main-content">
+                <section class="description-section">
+                    <h3>About This Event</h3>
+                    <p class="event-description">@currentEvent.Description</p>
+                </section>
+
+                @if (currentEvent.Tags.Any())
+                {
+                    <section class="tags-section">
+                        <h4>Categories</h4>
+                        <div class="tags">
+                            @foreach (var tag in currentEvent.Tags)
+                            {
+                                <span class="tag">@tag</span>
+                            }
+                        </div>
+                    </section>
+                }
+            </div>
+
+            <div class="sidebar">
+                <div class="event-info-card">
+                    <h4>Event Information</h4>
+
+                    <div class="info-item">
+                        <strong>Capacity:</strong>
+                        <span>@currentEvent.RegisteredCount / @currentEvent.Capacity attendees</span>
+                    </div>
+
+                    @if (!currentEvent.IsFull)
+                    {
+                        <div class="info-item">
+                            <strong>Available Spots:</strong>
+                            <span class="available-spots">@currentEvent.AvailableSpots remaining</span>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(currentEvent.OrganizerName))
+                    {
+                        <div class="info-item">
+                            <strong>Organized by:</strong>
+                            <span>@currentEvent.OrganizerName</span>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrEmpty(currentEvent.OrganizerContact))
+                    {
+                        <div class="info-item">
+                            <strong>Contact:</strong>
+                            <span>@currentEvent.OrganizerContact</span>
+                        </div>
+                    }
+                </div>
+
+                <div class="progress-card">
+                    <h5>Registration Progress</h5>
+                    <div class="progress-bar">
+                        <div class="progress-fill"
+                            style="width: @(((double)currentEvent.RegisteredCount / currentEvent.Capacity) * 100)%"></div>
+                    </div>
+                    <small>@currentEvent.RegisteredCount of @currentEvent.Capacity registered</small>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else if (isLoading)
+{
+    <div class="loading-container">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading event details...</p>
+    </div>
+}
+else
+{
+    <div class="error-container">
+        <h2>Event Not Found</h2>
+        <p>The event you're looking for doesn't exist or may have been removed.</p>
+        <button class="btn btn-primary" @onclick="GoBack">Back to Events</button>
+    </div>
+}
+
+@code {
+    [Parameter] public int EventId { get; set; }
+
+    private Event? currentEvent;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentEvent = await EventService.GetEventByIdAsync(EventId);
+        isLoading = false;
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private void RegisterForEvent()
+    {
+        if (currentEvent != null && !currentEvent.IsFull)
+        {
+            Navigation.NavigateTo($"/event-registration/{currentEvent.Id}");
+        }
+    }
+}

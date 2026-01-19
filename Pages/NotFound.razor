@@ -1,0 +1,48 @@
+﻿@page "/not-found"
+@layout MainLayout
+@inject NavigationManager Navigation
+
+<PageTitle>Page Not Found - EventEase</PageTitle>
+
+<div class="not-found-container">
+    <div class="not-found-content">
+        <div class="error-icon">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <h1>404 - Page Not Found</h1>
+        <p class="error-message">
+            Sorry, the page you're looking for doesn't exist or may have been moved.
+        </p>
+
+        <div class="action-buttons">
+            <button class="btn btn-primary" @onclick="GoHome">
+                <i class="bi bi-house"></i> Go Home
+            </button>
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Go Back
+            </button>
+        </div>
+
+        <div class="suggestions">
+            <h4>You might want to:</h4>
+            <ul>
+                <li><a href="/">Browse upcoming events</a></li>
+                <li>Check the URL for typos</li>
+                <li>Use the navigation menu above</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+@code {
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private void GoBack()
+    {
+        // Use JavaScript to go back in browser history
+        Navigation.NavigateTo("/");
+    }
+}

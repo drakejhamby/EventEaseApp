@@ -1,0 +1,279 @@
+@page "/event-registration/{EventId:int}"
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@using System.ComponentModel.DataAnnotations
+@inject IEventService EventService
+@inject IUserSessionService UserSessionService
+@inject IAttendanceService AttendanceService
+@inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Register for @(currentEvent?.Name ?? "Event") - EventEase</PageTitle>
+
+@if (currentEvent != null)
+{
+    <div class="registration-container">
+        <div class="back-navigation">
+            <button class="btn btn-outline-secondary" @onclick="GoBack">
+                <i class="bi bi-arrow-left"></i> Back to Event Details
+            </button>
+        </div>
+
+        <div class="registration-header">
+            <h1>Register for Event</h1>
+            <div class="event-summary">
+                <h2>@currentEvent.Name</h2>
+                <div class="event-info">
+                    <span><i class="bi bi-calendar"></i> @currentEvent.Date.ToString("MMMM dd, yyyy 'at' h:mm tt")</span>
+                    <span><i class="bi bi-geo-alt"></i> @currentEvent.Location</span>
+                    <span class="price">
+                        @if (currentEvent.Price > 0)
+                        {
+                            <i class="bi bi-currency-dollar"></i>
+
+                            <text>@currentEvent.Price.ToString("F2")</text>
+                        }
+                        else
+                        {
+                            <i class="bi bi-gift"></i>
+
+                            <text>Free</text>
+                        }
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        @if (registrationSuccess)
+        {
+            <div class="success-message">
+                <div class="success-content">
+                    <i class="bi bi-check-circle-fill"></i>
+                    <h3>Registration Successful!</h3>
+                    <p>You've successfully registered for <strong>@currentEvent.Name</strong>.</p>
+                    <p>Your registration details have been saved to your account.</p>
+                    <div class="success-actions">
+                        <button class="btn btn-primary"
+                            @onclick="@(() => Navigation.NavigateTo($"/event-details/{currentEvent.Id}"))">
+                            View Event Details
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                            Browse More Events
+                        </button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (currentEvent.IsFull)
+        {
+            <div class="full-event-message">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <h3>Event is Full</h3>
+                <p>Unfortunately, this event has reached its maximum capacity.</p>
+                <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo($"/event-details/{currentEvent.Id}"))">
+                    Back to Event Details
+                </button>
+            </div>
+        }
+        else
+        {
+            <div class="registration-form-container">
+                @if (currentSession == null)
+                {
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle-fill"></i>
+                        Please <a href="/login">sign in</a> to your account to register for this event. Your account information
+                        will be used to complete the registration.
+                    </div>
+                    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">Sign In</button>
+                }
+                else
+                {
+                    <div class="registration-info">
+                        <h3>Registration Details</h3>
+                        <div class="info-section">
+                            <p><strong>Name:</strong> @currentSession.FullName</p>
+                            <p><strong>Email:</strong> @currentSession.Email</p>
+                        </div>
+                        <p class="info-note"><i class="bi bi-info-circle"></i> Your account information will be used for this
+                            registration.</p>
+                    </div>
+
+                    @if (!string.IsNullOrEmpty(formError))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            @formError
+                        </div>
+                    }
+
+                    @if (currentEvent.Price > 0)
+                    {
+                        <div class="form-section payment-section">
+                            <h3>Payment Information</h3>
+                            <div class="payment-summary">
+                                <div class="payment-item">
+                                    <span>Event Registration</span>
+                                    <span>$@currentEvent.Price.ToString("F2")</span>
+                                </div>
+                                <div class="payment-total">
+                                    <strong>
+                                        <span>Total</span>
+                                        <span>$@currentEvent.Price.ToString("F2")</span>
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="form-actions">
+                        @if (currentEvent.Price > 0)
+                        {
+                            <button type="button" class="btn btn-success btn-lg" @onclick="HandleQuickRegistration"
+                                disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <text>Processing Payment...</text>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-credit-card me-2"></i>
+                                    <text>Pay & Register ($@currentEvent.Price.ToString("F2"))</text>
+                                }
+                            </button>
+                        }
+                        else
+                        {
+                            <button type="button" class="btn btn-success btn-lg" @onclick="HandleQuickRegistration"
+                                disabled="@isSubmitting">
+                                @if (isSubmitting)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2"></span>
+                                    <text>Registering...</text>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-check-circle me-2"></i>
+                                    <text>Complete Registration</text>
+                                }
+                            </button>
+                        }
+                    </div>
+                }
+            </div>
+        }
+
+        <div class="event-summary-sidebar">
+            <h4>Event Summary</h4>
+            <div class="summary-item">
+                <strong>Available Spots:</strong>
+                <span class="@(currentEvent.AvailableSpots <= 10 ? "text-warning" : "")">
+                    @currentEvent.AvailableSpots remaining
+                </span>
+            </div>
+            <div class="summary-item">
+                <strong>Currently Registered:</strong>
+                <span>@currentEvent.RegisteredCount people</span>
+            </div>
+        </div>
+    </div>
+}
+else if (isLoading)
+{
+    <div class="loading-container">
+        <div class="spinner-border text-primary"></div>
+        <p>Loading registration form...</p>
+    </div>
+}
+else
+{
+    <div class="error-container">
+        <h2>Event Not Found</h2>
+        <p>The event you're trying to register for doesn't exist.</p>
+        <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/"))">Back to Events</button>
+    </div>
+}
+
+@code {
+    [Parameter] public int EventId { get; set; }
+
+    private Event? currentEvent;
+    private UserSession? currentSession;
+    private bool isLoading = true;
+    private bool isSubmitting = false;
+    private bool registrationSuccess = false;
+    private string formError = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            currentEvent = await EventService.GetEventByIdAsync(EventId);
+            if (currentEvent == null)
+            {
+                Navigation.NavigateTo("/not-found");
+                return;
+            }
+
+            currentSession = await UserSessionService.GetCurrentSessionAsync();
+        }
+        catch (Exception ex)
+        {
+            formError = $"Failed to load event: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo($"/event-details/{EventId}");
+    }
+
+    private async Task HandleQuickRegistration()
+    {
+        if (currentEvent == null || currentSession == null) return;
+
+        try
+        {
+            formError = ""; // Clear any previous errors
+            isSubmitting = true;
+            StateHasChanged();
+
+            // Simulate processing time for payment
+            await Task.Delay(2000);
+
+            // Check if event is still available
+            var latestEvent = await EventService.GetEventByIdAsync(EventId);
+            if (latestEvent?.IsFull == true)
+            {
+                formError = "Sorry, this event is now full. Registration is no longer available.";
+                return;
+            }
+
+            // Register using attendance service with user ID from session
+            var success = await AttendanceService.RegisterForEventAsync(currentSession.UserId, EventId);
+
+            if (success)
+            {
+                registrationSuccess = true;
+            }
+            else
+            {
+                formError = "You may already be registered for this event.";
+            }
+        }
+        catch (Exception ex)
+        {
+            formError = $"Registration failed: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+}

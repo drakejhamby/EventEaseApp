@@ -1,0 +1,197 @@
+@page "/register"
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@using System.ComponentModel.DataAnnotations
+@inject IAuthenticationService AuthenticationService
+@inject IUserSessionService UserSessionService
+@inject NavigationManager Navigation
+
+<PageTitle>User Registration - EventEase</PageTitle>
+
+<div class="registration-container">
+    <div class="registration-card">
+        <div class="card-header">
+            <h2>Create Your Account</h2>
+            <p>Join EventEase to discover and register for amazing events</p>
+        </div>
+
+        <div class="card-body">
+            @if (showSuccessMessage)
+            {
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    Registration successful! You can now browse and register for events.
+                </div>
+            }
+
+            @if (showErrorMessage)
+            {
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    @errorMessage
+                </div>
+            }
+
+            <EditForm Model="@registration" OnValidSubmit="@HandleValidSubmit" OnInvalidSubmit="@HandleInvalidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="validation-summary" />
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="firstName">First Name <span class="required">*</span></label>
+                        <InputText id="firstName" class="form-control" @bind-Value="registration.FirstName"
+                            placeholder="Enter your first name" />
+                        <ValidationMessage For="@(() => registration.FirstName)" class="validation-message" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="lastName">Last Name <span class="required">*</span></label>
+                        <InputText id="lastName" class="form-control" @bind-Value="registration.LastName"
+                            placeholder="Enter your last name" />
+                        <ValidationMessage For="@(() => registration.LastName)" class="validation-message" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address <span class="required">*</span></label>
+                    <InputText id="email" class="form-control" @bind-Value="registration.Email"
+                        placeholder="Enter your email address" />
+                    <ValidationMessage For="@(() => registration.Email)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="phone">Phone Number <span class="required">*</span></label>
+                    <InputText id="phone" class="form-control" @bind-Value="registration.Phone"
+                        placeholder="Enter your phone number" />
+                    <ValidationMessage For="@(() => registration.Phone)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="dateOfBirth">Date of Birth <span class="required">*</span></label>
+                    <InputDate id="dateOfBirth" class="form-control" @bind-Value="registration.DateOfBirth" />
+                    <ValidationMessage For="@(() => registration.DateOfBirth)" class="validation-message" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password <span class="required">*</span></label>
+                    <InputText id="password" class="form-control" @bind-Value="registration.Password" type="password"
+                        placeholder="Enter a secure password (minimum 6 characters)" />
+                    <ValidationMessage For="@(() => registration.Password)" class="validation-message" />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="company">Company</label>
+                        <InputText id="company" class="form-control" @bind-Value="registration.Company"
+                            placeholder="Company name (optional)" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="jobTitle">Job Title</label>
+                        <InputText id="jobTitle" class="form-control" @bind-Value="registration.JobTitle"
+                            placeholder="Your job title (optional)" />
+                    </div>
+                </div>
+
+                <div class="form-group-checkbox">
+                    <label class="checkbox-label">
+                        <InputCheckbox @bind-Value="registration.AcceptTerms" />
+                        <span class="checkmark"></span>
+                        I accept the <a href="/terms" target="_blank">Terms and Conditions</a> <span
+                            class="required">*</span>
+                    </label>
+                    <ValidationMessage For="@(() => registration.AcceptTerms)" class="validation-message" />
+                </div>
+
+                <div class="form-group-checkbox">
+                    <label class="checkbox-label">
+                        <InputCheckbox @bind-Value="registration.ReceiveNotifications" />
+                        <span class="checkmark"></span>
+                        I would like to receive email notifications about new events
+                    </label>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary"
+                        disabled="@(isSubmitting || !registration.AcceptTerms)">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                            <span>Creating Account...</span>
+                        }
+                        else
+                        {
+                            <span>Create Account</span>
+                        }
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                        Cancel
+                    </button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserRegistration registration = new();
+    private bool isSubmitting = false;
+    private bool showSuccessMessage = false;
+    private bool showErrorMessage = false;
+    private string errorMessage = "";
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        showErrorMessage = false;
+        showSuccessMessage = false;
+
+        try
+        {
+            // Check if email already exists
+            if (await AuthenticationService.EmailExistsAsync(registration.Email))
+            {
+                errorMessage = "An account with this email address already exists.";
+                showErrorMessage = true;
+                return;
+            }
+
+            // Register the user
+            var success = await AuthenticationService.RegisterUserAsync(registration);
+
+            if (success)
+            {
+                // Create user session
+                var fullName = $"{registration.FirstName} {registration.LastName}";
+                await UserSessionService.CreateSessionAsync(registration.Email, fullName);
+
+                showSuccessMessage = true;
+
+                // Redirect to home page after a short delay
+                await Task.Delay(2000);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Registration failed. Please try again.";
+                showErrorMessage = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+            showErrorMessage = true;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        errorMessage = "Please correct the errors below and try again.";
+        showErrorMessage = true;
+        showSuccessMessage = false;
+    }
+}

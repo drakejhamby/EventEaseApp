@@ -1,0 +1,282 @@
+@page "/attendance"
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@inject IAttendanceService AttendanceService
+@inject IEventService EventService
+@inject IUserSessionService UserSessionService
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Attendance Tracker - EventEase</PageTitle>
+
+<div class="attendance-container">
+    <div class="page-header">
+        <h2>Event Attendance Tracker</h2>
+        <p>Monitor event participation and attendance statistics</p>
+    </div>
+
+    @if (currentSession == null)
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            Please <a href="/register">register</a> or log in to view attendance information.
+        </div>
+    }
+    else
+    {
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number">@attendanceStats.GetValueOrDefault("TotalRegistrations", 0)</div>
+                    <div class="stat-label">Total Registrations</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-check-circle-fill"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number">@attendanceStats.GetValueOrDefault("CheckedIn", 0)</div>
+                    <div class="stat-label">Checked In</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-clock-fill"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number">@attendanceStats.GetValueOrDefault("PendingCheckIn", 0)</div>
+                    <div class="stat-label">Pending Check-in</div>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-x-circle-fill"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-number">@attendanceStats.GetValueOrDefault("NoShows", 0)</div>
+                    <div class="stat-label">No Shows</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="attendance-sections">
+            <!-- My Registrations -->
+            <div class="section">
+                <div class="section-header">
+                    <h3>My Event Registrations</h3>
+                    <span class="badge">@myRegistrations.Count registrations</span>
+                </div>
+
+                @if (myRegistrations.Any())
+                {
+                    <div class="registrations-list">
+                        @foreach (var registration in myRegistrations)
+                        {
+                            var eventItem = events.FirstOrDefault(e => e.Id == registration.EventId);
+                            <div class="registration-item">
+                                <div class="event-info">
+                                    <div class="event-name">@(eventItem?.Name ?? "Unknown Event")</div>
+                                    <div class="event-date">@(eventItem?.Date.ToString("MMM dd, yyyy") ?? "")</div>
+                                    <div class="registration-date">
+                                        Registered: @registration.RegistrationDate.ToString("MMM dd, yyyy")
+                                    </div>
+                                </div>
+
+                                <div class="registration-status">
+                                    <span class="status-badge status-@registration.Status.ToLower()">
+                                        @GetStatusIcon(registration.Status) @registration.Status
+                                    </span>
+
+                                    @if (registration.Status == "Registered" && eventItem?.Date > DateTime.Now)
+                                    {
+                                        <button class="btn btn-sm btn-primary" @onclick="@(() => CheckInUser(registration))">
+                                            Check In
+                                        </button>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <i class="bi bi-calendar-x"></i>
+                        <p>You haven't registered for any events yet.</p>
+                        <a href="/" class="btn btn-primary">Browse Events</a>
+                    </div>
+                }
+            </div>
+
+            <!-- Quick Event Registration -->
+            <div class="section">
+                <div class="section-header">
+                    <h3>Quick Event Registration</h3>
+                </div>
+
+                <div class="quick-register">
+                    <select class="form-select" @bind="selectedEventId">
+                        <option value="0">Select an event to register...</option>
+                        @foreach (var eventItem in availableEvents)
+                        {
+                            <option value="@eventItem.Id">@eventItem.Name - @eventItem.Date.ToString("MMM dd")</option>
+                        }
+                    </select>
+
+                    <button class="btn btn-success" @onclick="RegisterForEvent"
+                        disabled="@(selectedEventId == 0 || isRegistering)">
+                        @if (isRegistering)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-plus-circle"></i>
+                        }
+                        Register
+                    </button>
+                </div>
+
+                @if (!string.IsNullOrEmpty(registrationMessage))
+                {
+                    <div class="alert @(registrationSuccess ? "alert-success" : "alert-danger")">
+                        @registrationMessage
+                    </div>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private UserSession? currentSession;
+    private List<Models.EventRegistration> myRegistrations = new();
+    private List<Event> events = new();
+    private List<Event> availableEvents = new();
+    private Dictionary<string, int> attendanceStats = new();
+    private int selectedEventId = 0;
+    private bool isRegistering = false;
+    private string registrationMessage = "";
+    private bool registrationSuccess = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentSession = await UserSessionService.GetCurrentSessionAsync();
+
+        if (currentSession != null)
+        {
+            // Subscribe to registration changes
+            AttendanceService.OnRegistrationChanged += OnRegistrationChanged;
+            await LoadData();
+        }
+    }
+
+    private void OnRegistrationChanged(string userId, int eventId)
+    {
+        // Refresh data when a registration happens
+        InvokeAsync(async () =>
+        {
+            await LoadData();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        AttendanceService.OnRegistrationChanged -= OnRegistrationChanged;
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            // Load attendance stats
+            attendanceStats = await AttendanceService.GetAttendanceStatsAsync();
+
+            // Load user's registrations
+            myRegistrations = await AttendanceService.GetUserRegistrationsAsync(currentSession!.UserId);
+
+            // Load all events
+            events = await EventService.GetAllEventsAsync();
+
+            // Load available events (not registered and upcoming)
+            var registeredEventIds = myRegistrations.Select(r => r.EventId).ToHashSet();
+            availableEvents = events
+            .Where(e => !registeredEventIds.Contains(e.Id) && e.IsUpcoming && !e.IsFull)
+            .ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading attendance data: {ex.Message}");
+        }
+    }
+
+    private async Task CheckInUser(Models.EventRegistration registration)
+    {
+        try
+        {
+            var success = await AttendanceService.CheckInUserAsync(currentSession!.UserId, registration.EventId);
+            if (success)
+            {
+                registration.Status = "CheckedIn";
+                await LoadData(); // Refresh stats
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error checking in user: {ex.Message}");
+        }
+    }
+
+    private async Task RegisterForEvent()
+    {
+        if (selectedEventId == 0 || currentSession == null)
+            return;
+
+        isRegistering = true;
+        registrationMessage = "";
+
+        try
+        {
+            var success = await AttendanceService.RegisterForEventAsync(currentSession.UserId, selectedEventId);
+
+            if (success)
+            {
+                registrationMessage = "Successfully registered for the event!";
+                registrationSuccess = true;
+                selectedEventId = 0;
+                await LoadData(); // Refresh data
+            }
+            else
+            {
+                registrationMessage = "Registration failed. The event may be full or you may already be registered.";
+                registrationSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            registrationMessage = $"Error: {ex.Message}";
+            registrationSuccess = false;
+        }
+        finally
+        {
+            isRegistering = false;
+        }
+    }
+
+    private string GetStatusIcon(string status) => status switch
+    {
+        "Registered" => "🕐",
+        "CheckedIn" => "✅",
+        "NoShow" => "❌",
+        _ => "❓"
+    };
+}

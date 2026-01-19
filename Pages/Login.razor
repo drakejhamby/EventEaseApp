@@ -1,0 +1,122 @@
+@page "/login"
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@inject IAuthenticationService AuthenticationService
+@inject IUserSessionService UserSessionService
+@inject NavigationManager Navigation
+
+<PageTitle>Sign In - EventEase</PageTitle>
+
+<div class="registration-container">
+    <div class="registration-card">
+        <div class="card-header">
+            <h2>Sign In to EventEase</h2>
+            <p>Access your account and manage your events</p>
+        </div>
+        <div class="card-body">
+            @if (showSuccessMessage)
+            {
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    You have been signed in successfully! Redirecting...
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    @errorMessage
+                </div>
+            }
+
+            <EditForm Model="loginForm" OnValidSubmit="HandleValidSubmit" OnInvalidSubmit="HandleInvalidSubmit">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="validation-summary" />
+
+                <div class="form-group">
+                    <label for="email">Email Address <span class="required">*</span></label>
+                    <InputText id="email" @bind-Value="loginForm.Email" type="email" class="form-control"
+                        placeholder="Enter your email address" />
+                    <ValidationMessage For="() => loginForm.Email" />
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password <span class="required">*</span></label>
+                    <InputText id="password" @bind-Value="loginForm.Password" type="password" class="form-control"
+                        placeholder="Enter your password" />
+                    <ValidationMessage For="() => loginForm.Password" />
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm"></span>
+                            <span>Signing In...</span>
+                        }
+                        else
+                        {
+                            <span>Sign In</span>
+                        }
+                    </button>
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                        Back to Home
+                    </button>
+                </div>
+            </EditForm>
+
+            <div style="margin-top: 2rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+                <p>Don't have an account? <a href="/register">Create one here</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private UserLogin loginForm = new();
+    private bool isSubmitting = false;
+    private bool showSuccessMessage = false;
+    private string errorMessage = "";
+
+    private async Task HandleValidSubmit()
+    {
+        isSubmitting = true;
+        errorMessage = "";
+        showSuccessMessage = false;
+
+        try
+        {
+            var user = await AuthenticationService.LoginAsync(loginForm.Email, loginForm.Password);
+
+            if (user != null)
+            {
+                // Create a session for the user
+                var fullName = $"{user.FirstName} {user.LastName}";
+                await UserSessionService.CreateSessionAsync(user.Email, fullName);
+
+                showSuccessMessage = true;
+
+                // Redirect to home page after a short delay
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                errorMessage = "Invalid email or password. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void HandleInvalidSubmit()
+    {
+        errorMessage = "Please correct the errors below and try again.";
+    }
+}

@@ -1,0 +1,403 @@
+@using EventEaseApp.Models
+@using EventEaseApp.Services
+@inject IUserSessionService UserSessionService
+@inject IAttendanceService AttendanceService
+@inject NavigationManager Navigation
+@inherits ComponentBase
+@implements IEquatable<EventCard>
+
+@if (Event != null && IsValidEvent(Event))
+{
+    <div class="event-card">
+        <div class="event-header">
+            <h3 class="event-title">@Event.Name</h3>
+            <span class="event-date">@FormattedDate</span>
+        </div>
+        <div class="event-body">
+            <div class="event-location">
+                <i class="bi bi-geo-alt"></i>
+                <span>@Event.Location</span>
+            </div>
+            <p class="event-description">@TruncatedDescription</p>
+            <div class="event-price">
+                @if (Event.Price > 0)
+                {
+                    <span class="price">@FormattedPrice</span>
+                }
+                else
+                {
+                    <span class="price free">Free</span>
+                }
+            </div>
+        </div>
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success mb-3">
+                <i class="bi bi-check-circle-fill"></i> @successMessage
+            </div>
+        }
+        <div class="event-footer">
+            <button class="btn btn-primary" @onclick="HandleViewDetails" disabled="@(!Event.IsUpcoming)">
+                View Details
+            </button>
+        </div>
+    </div>
+}
+else
+{
+    <div class="event-card invalid">
+        <div class="error-content">
+            <i class="bi bi-exclamation-triangle text-warning"></i>
+            <span>Invalid event data</span>
+        </div>
+    </div>
+}
+
+@if (showConfirmModal)
+{
+    <div class="modal-overlay" @onclick="@(() => showConfirmModal = false)">
+        <div class="quick-register-modal" @onclick:stopPropagation>
+            <div class="modal-header">
+                <h4>Quick Registration</h4>
+                <button type="button" class="btn-close" @onclick="@(() => showConfirmModal = false)"></button>
+            </div>
+            <div class="modal-body">
+                <p>Register for <strong>@Event?.Name</strong> as <strong>@currentSessionName</strong>?</p>
+                <div class="event-summary-modal">
+                    <p><i class="bi bi-calendar"></i> @Event?.Date.ToString("MMM dd, yyyy")</p>
+                    <p><i class="bi bi-geo-alt"></i> @Event?.Location</p>
+                    @if (Event?.Price > 0)
+                    {
+                        <p><i class="bi bi-currency-dollar"></i> @Event?.Price.ToString("F2")</p>
+                    }
+                    else
+                    {
+                        <p><i class="bi bi-gift"></i> Free</p>
+                    }
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" @onclick="@(() => showConfirmModal = false)">Cancel</button>
+                <button class="btn btn-success" @onclick="ConfirmQuickRegister" disabled="@isRegistering">
+                    @if (isRegistering)
+                    {
+                        <span class="spinner-border spinner-border-sm"></span>
+                        <text>Confirm Registration</text>
+                    }
+                    else
+                    {
+                        <text>Confirm Registration</text>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Event Event { get; set; } = new();
+    [Parameter] public EventCallback<Event> OnViewDetails { get; set; }
+    [Parameter] public EventCallback<Event> OnRegister { get; set; }
+
+    // Memoized properties to avoid repeated string operations
+    private string? _formattedDate;
+    private string? _formattedPrice;
+    private string? _truncatedDescription;
+    private Event? _lastEvent;
+    private bool isRegistering = false;
+    private bool showConfirmModal = false;
+    private string currentSessionName = "";
+    private string successMessage = "";
+
+    private string FormattedDate
+    {
+        get
+        {
+            if (_lastEvent != Event || _formattedDate == null)
+            {
+                _formattedDate = Event.Date.ToString("MMM dd, yyyy");
+                _lastEvent = Event;
+            }
+            return _formattedDate;
+        }
+    }
+
+    private string FormattedPrice
+    {
+        get
+        {
+            if (_lastEvent != Event || _formattedPrice == null)
+            {
+                _formattedPrice = Event.Price.ToString("C2");
+                _lastEvent = Event;
+            }
+            return _formattedPrice;
+        }
+    }
+
+    private string TruncatedDescription
+    {
+        get
+        {
+            if (_lastEvent != Event || _truncatedDescription == null)
+            {
+                const int maxLength = 120;
+                _truncatedDescription = Event.Description.Length > maxLength
+                ? Event.Description.Substring(0, maxLength) + "..."
+                : Event.Description;
+                _lastEvent = Event;
+            }
+            return _truncatedDescription;
+        }
+    }
+
+    private async Task HandleViewDetails()
+    {
+        if (OnViewDetails.HasDelegate)
+        {
+            await OnViewDetails.InvokeAsync(Event);
+            return;
+        }
+
+        // Fallback navigation when no parent handler is provided
+        Navigation.NavigateTo($"/event-details/{Event.Id}");
+    }
+
+    private async Task HandleRegister()
+    {
+        try
+        {
+            if (!IsValidEvent(Event) || Event.IsFull || !Event.IsUpcoming)
+            {
+                return;
+            }
+
+            var currentSession = await UserSessionService.GetCurrentSessionAsync();
+
+            if (currentSession == null)
+            {
+                // Prompt user to create/sign in
+                Navigation.NavigateTo($"/register?returnUrl=/event-registration/{Event.Id}");
+                return;
+            }
+
+            // Show quick registration confirmation modal
+            currentSessionName = currentSession.FullName;
+            showConfirmModal = true;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in HandleRegister: {ex.Message}");
+        }
+    }
+
+    private async Task ConfirmQuickRegister()
+    {
+        try
+        {
+            var currentSession = await UserSessionService.GetCurrentSessionAsync();
+
+            if (currentSession == null)
+            {
+                showConfirmModal = false;
+                return;
+            }
+
+            isRegistering = true;
+            StateHasChanged();
+
+            var success = await AttendanceService.RegisterForEventAsync(currentSession.UserId, Event.Id);
+
+            if (success)
+            {
+                Event.RegisteredCount++;
+                successMessage = "Successfully registered for this event!";
+                showConfirmModal = false;
+
+                if (OnRegister.HasDelegate)
+                {
+                    // Debug statement removed
+                }
+
+                // Clear success message after 3 seconds
+                await Task.Delay(3000);
+                successMessage = "";
+            }
+            else
+            {
+                successMessage = "You are already registered for this event.";
+                showConfirmModal = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error registering for event: {ex.Message}");
+            successMessage = "Registration failed. Please try again.";
+        }
+        finally
+        {
+            isRegistering = false;
+            StateHasChanged();
+        }
+    }
+
+    private bool IsValidEvent(Event? eventItem)
+    {
+        if (eventItem == null) return false;
+
+        // Validate required fields
+        if (string.IsNullOrWhiteSpace(eventItem.Name) ||
+        string.IsNullOrWhiteSpace(eventItem.Location) ||
+        eventItem.Id <= 0 ||
+        eventItem.Capacity < 0 ||
+        eventItem.RegisteredCount < 0 ||
+        eventItem.Price < 0)
+        {
+            return false;
+        }
+
+        // Validate business rules
+        if (eventItem.RegisteredCount > eventItem.Capacity)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected override bool ShouldRender()
+    {
+        // Only re-render if the Event has actually changed
+        return _lastEvent != Event;
+    }
+
+    public bool Equals(EventCard? other)
+    {
+        return other?.Event?.Id == Event?.Id;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is EventCard other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        return Event?.Id.GetHashCode() ?? 0;
+    }
+}
+
+<style>
+    .event-card {
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        background: var(--card-bg);
+        color: var(--text-color);
+        box-shadow: var(--shadow);
+        transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .event-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    [data-theme="dark"] .event-card:hover {
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .event-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+        padding-bottom: 0.5rem;
+    }
+
+    .event-title {
+        color: var(--text-color);
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .event-date {
+        background: #007bff;
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .event-location {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-color);
+        opacity: 0.8;
+        margin-bottom: 0.75rem;
+    }
+
+    .event-location i {
+        color: #007bff;
+    }
+
+    .event-description {
+        color: var(--text-color);
+        opacity: 0.9;
+        line-height: 1.5;
+        margin-bottom: 1rem;
+    }
+
+    .event-price {
+        margin-bottom: 1rem;
+    }
+
+    .price {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #28a745;
+    }
+
+    .price.free {
+        color: #007bff;
+    }
+
+    .event-footer {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .event-footer .btn {
+        flex: 1;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+
+    .btn-success {
+        background-color: #28a745;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background-color: #218838;
+    }
+</style>
