@@ -20,7 +20,7 @@
     
     <!-- Production optimizations -->
     <BlazorWebAssemblyLoadBootResource>true</BlazorWebAssemblyLoadBootResource>
-    <BlazorWebAssemblyCompressionFormat>gzip</BlazorWebAssemblyCompressionFormat>
+    <BlazorWebAssemblyCompressionFormat>brotli</BlazorWebAssemblyCompressionFormat>
     <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
     <WasmStripILAfterAOT Condition="'$(Configuration)' == 'Release'">true</WasmStripILAfterAOT>
   </PropertyGroup>
