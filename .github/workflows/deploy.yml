@@ -40,6 +40,15 @@ jobs:
       
     - name: Check for _framework folder
       run: ls -la release/wwwroot/_framework/ || echo "_framework folder not found!"
+
+    - name: Check for blazor.boot.json
+      run: |
+        if [ -f release/wwwroot/_framework/blazor.boot.json ]; then
+          echo "blazor.boot.json found!"
+          cat release/wwwroot/_framework/blazor.boot.json
+        else
+          echo "ERROR: blazor.boot.json NOT FOUND!"
+        fi
       
     - name: Add .nojekyll file
       run: touch release/wwwroot/.nojekyll
