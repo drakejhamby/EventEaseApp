@@ -14,7 +14,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
-jobs: 
+jobs:  
   build:
     runs-on:  ubuntu-latest
     steps: 
@@ -32,11 +32,14 @@ jobs:
     - name:  Restore dependencies
       run: dotnet restore
       
-    - name:  Build
-      run: dotnet build --configuration Release --no-restore
-      
-    - name: Publish
+    - name:  Publish
       run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo
+      
+    - name:  List published files (debug)
+      run: ls -la release/wwwroot/
+      
+    - name: Check for _framework folder
+      run: ls -la release/wwwroot/_framework/ || echo "_framework folder not found!"
       
     - name: Add .nojekyll file
       run: touch release/wwwroot/.nojekyll
