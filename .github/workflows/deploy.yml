@@ -1,11 +1,11 @@
 name: Deploy to GitHub Pages
 
 on: 
-  push:
+  push: 
     branches: [ main ]
   workflow_dispatch: 
 
-permissions: 
+permissions:  
   contents: read
   pages:  write
   id-token: write
@@ -14,7 +14,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
-jobs:
+jobs: 
   build:
     runs-on:  ubuntu-latest
     steps: 
@@ -29,23 +29,23 @@ jobs:
     - name: Install WebAssembly Tools
       run: dotnet workload install wasm-tools
         
-    - name: Restore dependencies
+    - name:  Restore dependencies
       run: dotnet restore
       
-    - name: Build
+    - name:  Build
       run: dotnet build --configuration Release --no-restore
       
     - name: Publish
-      run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo
+      run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo /p:RunAOTCompilation=false
       
-    - name: Add .nojekyll file
-      run:  touch release/wwwroot/.nojekyll
+    - name: Add . nojekyll file
+      run: touch release/wwwroot/. nojekyll
       
     - name: Copy index.html to 404.html
-      run: cp release/wwwroot/index. html release/wwwroot/404.html
+      run: cp release/wwwroot/index.html release/wwwroot/404.html
       
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v3
+      uses:  actions/upload-pages-artifact@v3
       with:
         path:  release/wwwroot
 
