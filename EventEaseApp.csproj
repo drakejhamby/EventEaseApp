@@ -23,6 +23,7 @@
     <BlazorWebAssemblyCompressionFormat>brotli</BlazorWebAssemblyCompressionFormat>
     <RunAOTCompilation Condition="'$(Configuration)' == 'Release'">true</RunAOTCompilation>
     <WasmStripILAfterAOT Condition="'$(Configuration)' == 'Release'">true</WasmStripILAfterAOT>
+    <TrimmerRootDescriptor>TrimmerRoots.xml</TrimmerRootDescriptor>
   </PropertyGroup>
 
   <ItemGroup>
