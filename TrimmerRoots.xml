@@ -1,0 +1,6 @@
+<linker>
+  <assembly fullname="Microsoft.AspNetCore.Components">
+    <type fullname="Microsoft.AspNetCore. Components. LayoutView" preserve="all" />
+    <type fullname="Microsoft.AspNetCore.Components. Routing.Router" preserve="all" />
+  </assembly>
+</linker>
