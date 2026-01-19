@@ -36,7 +36,7 @@ jobs:
       run: dotnet build --configuration Release --no-restore
       
     - name: Publish
-      run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo /p:RunAOTCompilation=false
+      run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo
       
     - name: Add . nojekyll file
       run: touch release/wwwroot/. nojekyll
