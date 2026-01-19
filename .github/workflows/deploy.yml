@@ -38,8 +38,8 @@ jobs:
     - name: Publish
       run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo
       
-    - name: Add . nojekyll file
-      run: touch release/wwwroot/. nojekyll
+    - name: Add .nojekyll file
+      run: touch release/wwwroot/.nojekyll
       
     - name: Copy index.html to 404.html
       run: cp release/wwwroot/index.html release/wwwroot/404.html
