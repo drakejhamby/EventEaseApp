@@ -34,6 +34,9 @@ jobs:
       
     - name:  Publish
       run: dotnet publish EventEaseApp.csproj -c Release -o release --nologo
+
+    - name:  Fix base href for GitHub Pages
+      run: sed -i 's|<base href="/" />|<base href="/EventEaseApp/" />|g' release/wwwroot/index.html
       
     - name:  List published files (debug)
       run: ls -la release/wwwroot/
