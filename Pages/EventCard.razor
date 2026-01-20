@@ -160,7 +160,7 @@ else
         }
 
         // Fallback navigation when no parent handler is provided
-        Navigation.NavigateTo($"/event-details/{Event.Id}");
+        Navigation.NavigateTo($"event-details/{Event.Id}");
     }
 
     private async Task HandleRegister()
@@ -177,7 +177,7 @@ else
             if (currentSession == null)
             {
                 // Prompt user to create/sign in
-                Navigation.NavigateTo($"/register?returnUrl=/event-registration/{Event.Id}");
+                Navigation.NavigateTo($"register?returnUrl=event-registration/{Event.Id}");
                 return;
             }
 

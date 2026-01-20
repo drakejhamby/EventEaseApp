@@ -26,7 +26,7 @@
         <div class="suggestions">
             <h4>You might want to:</h4>
             <ul>
-                <li><a href="/">Browse upcoming events</a></li>
+                <li><a href="">Browse upcoming events</a></li>
                 <li>Check the URL for typos</li>
                 <li>Use the navigation menu above</li>
             </ul>
@@ -37,12 +37,12 @@
 @code {
     private void GoHome()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("");
     }
 
     private void GoBack()
     {
-        // Use JavaScript to go back in browser history
-        Navigation.NavigateTo("/");
+        // Simple fallback: send user to app root respecting base href
+        Navigation.NavigateTo("");
     }
 }

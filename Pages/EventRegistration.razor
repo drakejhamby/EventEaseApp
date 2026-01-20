@@ -54,10 +54,10 @@
                     <p>Your registration details have been saved to your account.</p>
                     <div class="success-actions">
                         <button class="btn btn-primary"
-                            @onclick="@(() => Navigation.NavigateTo($"/event-details/{currentEvent.Id}"))">
+                            @onclick="@(() => Navigation.NavigateTo($"event-details/{currentEvent.Id}"))">
                             View Event Details
                         </button>
-                        <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                        <button class="btn btn-outline-secondary" @onclick="@(() => Navigation.NavigateTo(""))">
                             Browse More Events
                         </button>
                     </div>
@@ -70,7 +70,7 @@
                 <i class="bi bi-exclamation-circle-fill"></i>
                 <h3>Event is Full</h3>
                 <p>Unfortunately, this event has reached its maximum capacity.</p>
-                <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo($"/event-details/{currentEvent.Id}"))">
+                <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo($"event-details/{currentEvent.Id}"))">
                     Back to Event Details
                 </button>
             </div>
@@ -82,10 +82,10 @@
                 {
                     <div class="alert alert-info">
                         <i class="bi bi-info-circle-fill"></i>
-                        Please <a href="/login">sign in</a> to your account to register for this event. Your account information
+                        Please <a href="login">sign in</a> to your account to register for this event. Your account information
                         will be used to complete the registration.
                     </div>
-                    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/login"))">Sign In</button>
+                    <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("login"))">Sign In</button>
                 }
                 else
                 {
@@ -230,7 +230,7 @@ else
 
     private void GoBack()
     {
-        Navigation.NavigateTo($"/event-details/{EventId}");
+        Navigation.NavigateTo($"event-details/{EventId}");
     }
 
     private async Task HandleQuickRegistration()

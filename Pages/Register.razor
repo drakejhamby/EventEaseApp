@@ -97,7 +97,7 @@
                     <label class="checkbox-label">
                         <InputCheckbox @bind-Value="registration.AcceptTerms" />
                         <span class="checkmark"></span>
-                        I accept the <a href="/terms" target="_blank">Terms and Conditions</a> <span
+                        I accept the <a href="terms" target="_blank">Terms and Conditions</a> <span
                             class="required">*</span>
                     </label>
                     <ValidationMessage For="@(() => registration.AcceptTerms)" class="validation-message" />
@@ -124,7 +124,7 @@
                             <span>Create Account</span>
                         }
                     </button>
-                    <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo(""))">
                         Cancel
                     </button>
                 </div>
@@ -169,7 +169,7 @@
 
                 // Redirect to home page after a short delay
                 await Task.Delay(2000);
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("");
             }
             else
             {

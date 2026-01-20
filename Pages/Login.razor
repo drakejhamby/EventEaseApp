@@ -59,14 +59,14 @@
                             <span>Sign In</span>
                         }
                     </button>
-                    <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo("/"))">
+                    <button type="button" class="btn btn-secondary" @onclick="@(() => Navigation.NavigateTo(""))">
                         Back to Home
                     </button>
                 </div>
             </EditForm>
 
             <div style="margin-top: 2rem; text-align: center; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
-                <p>Don't have an account? <a href="/register">Create one here</a></p>
+                <p>Don't have an account? <a href="register">Create one here</a></p>
             </div>
         </div>
     </div>
@@ -98,7 +98,7 @@
 
                 // Redirect to home page after a short delay
                 await Task.Delay(1500);
-                Navigation.NavigateTo("/");
+                Navigation.NavigateTo("");
             }
             else
             {
