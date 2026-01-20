@@ -191,7 +191,7 @@ else
     <div class="error-container">
         <h2>Event Not Found</h2>
         <p>The event you're trying to register for doesn't exist.</p>
-        <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo("/"))">Back to Events</button>
+        <button class="btn btn-primary" @onclick="@(() => Navigation.NavigateTo(""))">Back to Events</button>
     </div>
 }
 
@@ -212,7 +212,7 @@ else
             currentEvent = await EventService.GetEventByIdAsync(EventId);
             if (currentEvent == null)
             {
-                Navigation.NavigateTo("/not-found");
+                Navigation.NavigateTo("not-found");
                 return;
             }
 

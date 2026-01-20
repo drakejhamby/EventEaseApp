@@ -158,14 +158,14 @@ else
 
     private void GoBack()
     {
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("");
     }
 
     private void RegisterForEvent()
     {
         if (currentEvent != null && !currentEvent.IsFull)
         {
-            Navigation.NavigateTo($"/event-registration/{currentEvent.Id}");
+            Navigation.NavigateTo($"event-registration/{currentEvent.Id}");
         }
     }
 }
