@@ -7,9 +7,9 @@
    
     
     <!-- Performance optimizations -->
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>link</TrimMode>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
+    <!--<PublishTrimmed>true</PublishTrimmed>-->
+    <!--<TrimMode>link</TrimMode>-->
+    <!--<EnableTrimAnalyzer>true</EnableTrimAnalyzer>-->
     <DebuggerSupport>false</DebuggerSupport>
     <EnableUnsafeBinaryFormatterSerialization>false</EnableUnsafeBinaryFormatterSerialization>
     
